@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 
 mod cli;
@@ -14,12 +14,14 @@ fn main() -> Result<()> {
 
     let temp = tempdir::TempDir::new("fakeinstall")?;
     let path = temp.path();
-    cargo(["init", "--name", bin_name], Some(path));
+    cargo(["init", "--name", bin_name], Some(path))
+        .context("failed to create cargo project")?;
     {
         let mut file = std::fs::File::create(path.join("src").join("main.rs"))?;
         writeln!(file, "{}", bootstrap_source(url, bin_name))?;
     }
-    cargo(["install", "--path", "."], Some(path));
+    cargo(["install", "--path", "."], Some(path))
+        .context("failed to install bootstrapper")?;
     println!("Run {bin_name} to boostrap your binary");
 
     Ok(())
@@ -52,7 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {{
     )
 }
 
-fn cargo<I, S>(args: I, temp: Option<&Path>)
+fn cargo<I, S>(args: I, temp: Option<&Path>) -> Result<()>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
@@ -61,5 +63,6 @@ where
     if let Some(dir) = temp {
         cmd.current_dir(dir);
     }
-    cmd.args(args).spawn().and_then(|mut c| c.wait()).unwrap();
+    cmd.args(args).spawn().and_then(|mut c| c.wait())?;
+    Ok(())
 }
