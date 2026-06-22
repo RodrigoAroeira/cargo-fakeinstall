@@ -20,10 +20,7 @@ fn main() -> Result<()> {
     writeln!(file, r#"const BIN_NAME: &str = "{}";"#, bin_name)?;
     writeln!(file, "{S}")?;
     drop(file);
-    cargo(
-        ["install", "--path", path.display().to_string().as_str()],
-        None,
-    );
+    cargo(["install", "--path", "."], Some(path));
     println!("Run {bin_name} to boostrap your binary");
 
     Ok(())
