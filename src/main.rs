@@ -15,37 +15,42 @@ fn main() -> Result<()> {
     let temp = tempdir::TempDir::new("fakeinstall")?;
     let path = temp.path();
     cargo(["init", "--name", bin_name], Some(path));
-    let mut file = std::fs::File::create(path.join("src").join("main.rs"))?;
-    writeln!(file, r#"const URL: &str = "{}";"#, url)?;
-    writeln!(file, r#"const BIN_NAME: &str = "{}";"#, bin_name)?;
-    writeln!(file, "{S}")?;
-    drop(file);
+    {
+        let mut file = std::fs::File::create(path.join("src").join("main.rs"))?;
+        writeln!(file, "{}", bootstrap_source(url, bin_name))?;
+    }
     cargo(["install", "--path", "."], Some(path));
     println!("Run {bin_name} to boostrap your binary");
 
     Ok(())
 }
 
-const S: &str = r#"
+fn bootstrap_source(url: &str, bin_name: &str) -> String {
+    format!(
+        r#"
 use std::error::Error;
 use std::os::unix::fs::PermissionsExt;
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {{
     let path = std::env::current_exe()?;
     let cmd = std::process::Command::new("wget")
-        .args(["-qO", BIN_NAME, URL])
+        .args(["-qO", "{bin_name}", "{url}"])
         .spawn()
         .and_then(|mut c| c.wait())?;
 
-    if !cmd.success() {
-        Err(format!("Unable to download `{}` binary", BIN_NAME))?;
-    }
+    if !cmd.success() {{
+        Err(format!("Unable to download `{{}}` binary", "{bin_name}"))?;
+    }}
 
-    std::fs::set_permissions(BIN_NAME, std::fs::Permissions::from_mode(0o755))?;
-    std::fs::rename(BIN_NAME, &path)?;
-    println!("Successfully installed {BIN_NAME}!");
+    std::fs::set_permissions("{bin_name}", std::fs::Permissions::from_mode(0o755))?;
+    std::fs::rename("{bin_name}", &path)?;
+    println!("Successfully installed {bin_name}!");
 
     Ok(())
-}"#;
+}}"#,
+        url = url,
+        bin_name = bin_name
+    )
+}
 
 fn cargo<I, S>(args: I, temp: Option<&Path>)
 where
