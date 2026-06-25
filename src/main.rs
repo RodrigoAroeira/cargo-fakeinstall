@@ -10,6 +10,11 @@ mod uri;
 
 use uri::Uri;
 
+mod template {
+    pub const REMOTE: &str = include_str!("../templates/remote.rs");
+    pub const LOCAL: &str = include_str!("../templates/local.rs");
+}
+
 fn main() -> Result<()> {
     let cli::Cli::Fakeinstall(args) = cli::Cli::parse();
     let uri = &args.uri;
@@ -29,46 +34,19 @@ fn main() -> Result<()> {
 }
 
 fn bootstrap_source(uri: &Uri, bin_name: &str) -> String {
-    match uri {
+    let (template_str, uri) = match uri {
         Uri::Remote(url) => {
             println!("Found remote url `{url}`");
-            format!(
-                r#"
-use std::os::unix::fs::PermissionsExt;
-fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    let path = std::env::current_exe()?;
-    let tmp = path.with_extension("tmp");
-    let cmd = std::process::Command::new("wget")
-        .args(["-qO", &tmp, "{url}"])
-        .spawn()
-        .and_then(|mut c| c.wait())?;
-    if !cmd.success() {{
-        Err(format!("Unable to download `{{}}` binary", "{bin_name}"))?;
-    }}
-    std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
-    std::fs::rename(&tmp, &path)?;
-    println!("Successfully installed {bin_name}!");
-    Ok(())
-}}"#,
-            )
+            (template::REMOTE, url)
         }
         Uri::Local(source) => {
             println!("Found local file `{source}`");
-            format!(
-                r#"
-use std::os::unix::fs::PermissionsExt;
-fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    let path = std::env::current_exe()?;
-    let tmp = path.with_extension("tmp");
-    std::fs::copy("{source}", &tmp)?;
-    std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
-    std::fs::rename(&tmp, &path)?;
-    println!("Successfully installed {bin_name}!");
-    Ok(())
-}}"#,
-            )
+            (template::LOCAL, source)
         }
-    }
+    };
+    template_str
+        .replace("@@BIN_NAME@@", bin_name)
+        .replace("@@BIN_URI@@", uri)
 }
 
 fn cargo<I, S>(args: I, temp: Option<&Path>) -> Result<()>
