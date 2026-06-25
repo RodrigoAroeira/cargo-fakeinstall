@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{ArgAction, Parser};
 
 use crate::uri::Uri;
 
@@ -15,4 +15,7 @@ pub struct FakeinstallArgs {
 
     #[arg(short, long)]
     pub bin_name: String,
+
+    #[arg(short, long, action=ArgAction::Count)]
+    pub verbose: u8,
 }

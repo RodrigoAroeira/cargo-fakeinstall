@@ -22,12 +22,14 @@ fn main() -> Result<()> {
 
     let temp = tempdir::TempDir::new("fakeinstall")?;
     let path = temp.path();
-    cargo(["init", "--name", bin_name], Some(path)).context("failed to create cargo project")?;
+    cargo(["init", "--name", bin_name], Some(path), args.verbose)
+        .context("failed to create cargo project")?;
     {
         let mut file = std::fs::File::create(path.join("src").join("main.rs"))?;
         writeln!(file, "{}", bootstrap_source(uri, bin_name))?;
     }
-    cargo(["install", "--path", "."], Some(path)).context("failed to install bootstrapper")?;
+    cargo(["install", "--path", "."], Some(path), args.verbose)
+        .context("failed to install bootstrapper")?;
     println!("Run {bin_name} to boostrap your binary");
 
     Ok(())
@@ -49,15 +51,24 @@ fn bootstrap_source(uri: &Uri, bin_name: &str) -> String {
         .replace("@@BIN_URI@@", uri)
 }
 
-fn cargo<I, S>(args: I, temp: Option<&Path>) -> Result<()>
+fn cargo<I, S>(args: I, temp: Option<&Path>, verbose: u8) -> Result<()>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
     let mut cmd = std::process::Command::new("cargo");
+
+    if verbose < 2 {
+        cmd.stderr(std::process::Stdio::null());
+    }
+    if verbose < 1 {
+        cmd.stdout(std::process::Stdio::null());
+    }
+
     if let Some(dir) = temp {
         cmd.current_dir(dir);
     }
+
     cmd.args(args).spawn().and_then(|mut c| c.wait())?;
     Ok(())
 }
