@@ -18,20 +18,33 @@ cargo install --path cargo-fakeinstall
 ## Usage
 
 ```bash
-cargo fakeinstall --url <URL> --bin-name <NAME>
+cargo fakeinstall --uri <URI> --bin-name <NAME>
+
+# Shorthand:
+cargo fakeinstall -u <URI> -b <NAME>
 ```
 
-### Example
+The `--uri` argument accepts:
+- A **remote URL** (e.g. a GitHub release asset)
+- A **local file** path prefixed with `file://` (e.g. `file:///path/to/binary`)
 
-Install `jq` (a JSON processor, not on crates.io):
+### Examples
+
+Install `jq` (a JSON processor, not on crates.io) from a remote URL:
 
 ```bash
 cargo fakeinstall \
-  --url https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-linux-amd64 \
-  --bin-name jq
+  -u https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-linux-amd64 \
+  -b jq
 ```
 
-First run downloads the real binary and replaces the bootstrapper:
+Install a local pre-downloaded binary:
+
+```bash
+cargo fakeinstall -u file://./downloaded-binary -b mytool
+```
+
+First run downloads/copies the real binary and replaces the bootstrapper:
 
 ```bash
 $ jq --version
@@ -52,10 +65,11 @@ without manually downloading files or messing with `chmod` or using package mana
 
 ## How it works
 
-1. A temporary Cargo project is created with a `main.rs` that contains the download bootstrapper.
+1. A temporary Cargo project is created with a `main.rs` that contains the bootstrapper.
 2. `cargo install --path` builds and installs the bootstrapper user-wide.
 3. When the user runs the binary for the first time, the bootstrapper:
-   - Downloads the real binary with `wget`
+   - For remote URIs: downloads the real binary with `wget`
+   - For local URIs: copies the file from the given path
    - Marks it executable (`chmod 755`)
    - Replaces itself (the bootstrapper) with the real binary
 
@@ -68,8 +82,8 @@ replaces itself with the real binary on first run.
 
 ## Requirements
 
-- `wget` must be installed on the system.
 - Linux (uses `std::os::unix::fs::PermissionsExt`).
+- `wget` must be installed for remote URIs (not needed for `file://` URIs).
 
 ## License
 

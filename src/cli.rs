@@ -1,5 +1,7 @@
 use clap::Parser;
 
+use crate::uri::Uri;
+
 #[derive(Parser)]
 #[command(name = "cargo", bin_name = "cargo")]
 pub enum Cli {
@@ -8,9 +10,9 @@ pub enum Cli {
 
 #[derive(Parser)]
 pub struct FakeinstallArgs {
-    #[arg(long = "url")]
-    pub url: String,
+    #[arg(short, long)]
+    pub uri: Uri,
 
-    #[arg(long = "bin-name")]
+    #[arg(short, long)]
     pub bin_name: String,
 }
